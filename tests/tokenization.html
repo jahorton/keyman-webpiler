@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8"> 
+        <meta http-equiv="Content-Type" content="text/html;charset=ISO-8859-1"> 
+        <title>Keyman-Webpiler:  Lexer rule testing</title>
+        <script src="../ext/lexer/lexer.js" type="text/javascript"></script>
+        <script src="../src/kmwLangLexDefs.js" type="text/javascript"></script>
+        <script type="text/javascript">
+
+            function readTextFile(file, func)
+            {
+                var f = new FileReader();
+                f.onload = function() {
+                    func(f.result);
+                };
+
+                f.readAsText(file);
+            }
+
+            var lexer = keyman.language.initializeLexer();
+
+            function fileSelected(event)
+            {
+                var file = event.target.files[0];
+                var div = document.getElementById("tokens");
+
+                var testFunc = function(text) {
+                    lexer.setInput(text);
+
+                    // Okay, so repeatedly call the lexer to get the next token.  Sweet.
+                    var token;
+                    while(token = lexer.lex()) {
+                        if(typeof(token) == 'undefined') {
+                            break;
+                        }
+
+                        //console.log("type: " + token.type + ", text: " + token.text);
+                        div.innerHTML += token.text + "<br>";
+                    }
+                }
+
+                readTextFile(file, testFunc);
+            }
+        </script>
+    </head>
+    <body>
+        <input type='file' onchange='fileSelected(event)'/><br>
+        <div id="tokens"></div>
+    </body>
+</html>

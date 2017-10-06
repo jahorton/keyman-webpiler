@@ -4,25 +4,8 @@
         <meta charset="UTF-8"> 
         <meta http-equiv="Content-Type" content="text/html;charset=ISO-8859-1"> 
         <title>Keyman-Webpiler Testing Homepage</title>
-        <script src="../ext/lexer/lexer.js" type="text/javascript"></script>
-        <script src="../src/kmwLangLexDefs.js" type="text/javascript"></script>
-        <script type="text/javascript">
-            var lexer = keyman.language.initializeLexer();
-
-            lexer.setInput("0xaffe 0x3819 blah0x123 '\"a bcd 0x00ade 'bla_12falafel");
-
-            // Okay, so repeatedly call the lexer to get the next token.  Sweet.
-            var token;
-            while(token = lexer.lex()) {
-                if(typeof(token) == 'undefined') {
-                    break;
-                }
-
-                console.log("type: " + token.type + ", text: " + token.text);
-            }
-        </script>
     </head>
     <body>
-        <p>Hello World!</p>
+        <p><a href="tokenization.html">Lexer rule testing</a></p>
     </body>
 </html>
