@@ -2,76 +2,44 @@ keyman = typeof(keyman) == 'undefined' ? {} : keyman;
 keyman.language = typeof(keyman.language) == 'undefined' ? {} : keyman.language;
 
 keyman.language.initializeLexer = keyman.language["initializeLexer"] = function() {
-    var lexer = new Lexer;
-
-    var makeRule = function(regex, tokenType, text) {
-        if(typeof(text) != "undefined") {
-            lexer.addRule(regex, function (lexeme) {
-                return { 
-                    type:tokenType, 
-                    text:text
-                };
-            });
-        } else if(typeof(tokenType) != "undefined") {
-            lexer.addRule(regex, function (lexeme) {
-                return { 
-                    type:tokenType, 
-                    text:lexeme
-                };
-            });
-        } else {
-            lexer.addRule(regex, function (lexeme) {
-            }); 
-        }
-    }
-
-    makeRule(/any/i, "any");
-    makeRule(/baselayout/i, "baselayout");
-    makeRule(/beep/i, "beep");
-    makeRule(/begin/i, "begin");
-    makeRule(/call/i, "call");    
-    makeRule(/context/i, "context");
-    makeRule(/deadkey/i, "deadkey");
-    makeRule(/dk/i, "deadkey", "deadkey");
-    makeRule(/group/i, "group");
-    makeRule(/if/i, "if");
-    makeRule(/index/i, "index");
-    makeRule(/layer/i, "layer");
-    makeRule(/match/i, "match");
-    makeRule(/nomatch/i, "nomatch");
-    makeRule(/notany/i, "notany");
-    makeRule(/nul/i, "nul");
-    makeRule(/outs/i, "outs");
-    makeRule(/platform/i, "platform");
-    makeRule(/reset/i, "reset");
-    makeRule(/return/i, "return");
-    makeRule(/save/i, "save");
-    makeRule(/set/i, "set");
-    makeRule(/store/i, "store");
-    makeRule(/use/i, "use");
-    makeRule(/using keys/i, "using keys");
-    
-    makeRule(/\n/i, "\n");
-    makeRule(/\+/i, "+")
-    makeRule(/>/i, ">");
-    makeRule(/\(/i, "(");
-    makeRule(/\)/i, ")");
-    makeRule(/=/i, "=");
-    makeRule(/\[/i, "[");
-    makeRule(/\]/i, "]");
-    makeRule(/,/i, ",");
-
-    makeRule(/0?x[a-fA-F\d]+/i, "HEX");
-    makeRule(/U\+[a-fA-F\d]+/i, "UNICODE");
-    makeRule(/"[^"]*?"/i, "STRING");
-    makeRule(/'[^']*?'/i, "STRING");
-    makeRule(/\d+/, "INTEGER");
-    makeRule(/[^\S\n]+/i);
-    makeRule(/c.*?\n/i); // Comment.
-
-    makeRule(/[a-zA-Z_\d]*/i, "NAME");
-    makeRule(/&[a-zA-Z_][a-zA-Z_\d]*/i, "SYSTEM_STORE");
-    makeRule(/\$[a-zA-Z_][a-zA-Z_\d]*/i, "NAMED_CONST");
+    // moo - the default location of moo's main lexer object, which produces lexers.
+    var lexer = moo.compile({
+        comment:    /c[^\S\n]+.*?$/,
+        whitespace: /[^\S\n]+/,
+        unicode:    /U\+[a-fA-F\d]+/,
+        hex:        /x[a-fA-F\d]+/,
+        //number:     /\d+/,
+        ident:      { // TODO:  Needs a better regex that allows Unicode characters! /w doesn't work!!!
+                        match: /[a-zA-Z_\d]+/u, // That 'u' says "Be unicode aware." [a-zA-Z_]
+                        keywords: { 
+                            keyword:
+                            ["any", "baselayout", "beep", "begin", "call", "deadkey", "dk", "group", "if", "index", "layer",
+                            "match", "nomatch", "notany", "nul", "outs", "platform", "reset", "return", "save", "set", "store",
+                            "use", "using keys"]
+                        },
+                        getType: function(x) {
+                            var result = /\d+/.exec(x);
+                            if(result && result[0] == x) {
+                                return 'number';
+                            } else {
+                                return 'ident';
+                            }
+                        }
+                    },
+        newline:    { match: /\n/, lineBreaks: true },
+        "(":        "(",
+        ")":        ")",
+        "[":        "[",
+        "]":        "]",
+        "+":        '+',
+        ">":        ">",
+        "=":        "=",
+        ",":        ",",
+        string:     [ { match: /"[^"]*?"/, value: x => x.slice(1, -1)},
+                      { match: /'[^']*?'/, value: x => x.slice(1, -1)}],
+        "$":        "$",
+        "&":        "&"
+    });
 
     return lexer;
 }

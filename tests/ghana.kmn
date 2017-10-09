@@ -1,4 +1,6 @@
-﻿store(&VERSION) '9.0'
+﻿c comment test
+
+store(&VERSION) '9.0'
 store(&NAME) 'Ghana'
 store(&WINDOWSLANGUAGES) 'x0809'
 store(&BITMAP) 'ghana.ico'
