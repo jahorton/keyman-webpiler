@@ -1,5 +1,8 @@
-# Definition of a tokenizer for Keyman's keyboard definition language.
 @{%
+// Generated from keymanLang.ne
+// Command (pwd = /src/): nearleyc keymanLang.ne > keymanGrammar.js
+
+// Defines a tokenizer for Keyman's keyboard definition language.
 const lexer = moo.compile({
     comment:    /c[^\S\n]+.*?$/,
     whitespace: /[^\S\n]+/,
@@ -57,6 +60,7 @@ const lexer = moo.compile({
     "&":        "&"
 });
 
+// Rule post-processing functions
 const filter = function(arg) {
 
     var i;
@@ -94,9 +98,14 @@ const nil = function() {
 const unwrap = function(arr) {
     return arr[0];
 }
+
+// Remnant of file:  the auto-generated parser.
 %}
 
 @lexer lexer
+
+# This should always be the first rule - it defines the grammar's root symbol.
+SOURCEFILE -> rule {% unwrap %}
 
 # Basic keystroke rule.
 rule -> %plus _ keystroke _ %prod _ basic_output _ %endl {% filter %} 

@@ -3,6 +3,10 @@
 (function () {
 function id(x) {return x[0]; }
 
+// Generated from keymanLang.ne
+// Command (pwd = /src/): nearleyc keymanLang.ne > keymanGrammar.js
+
+// Defines a tokenizer for Keyman's keyboard definition language.
 const lexer = moo.compile({
     comment:    /c[^\S\n]+.*?$/,
     whitespace: /[^\S\n]+/,
@@ -60,6 +64,7 @@ const lexer = moo.compile({
     "&":        "&"
 });
 
+// Rule post-processing functions
 const filter = function(arg) {
 
     var i;
@@ -97,9 +102,12 @@ const nil = function() {
 const unwrap = function(arr) {
     return arr[0];
 }
+
+// Remnant of file:  the auto-generated parser.
 var grammar = {
     Lexer: lexer,
     ParserRules: [
+    {"name": "SOURCEFILE", "symbols": ["rule"], "postprocess": unwrap},
     {"name": "rule", "symbols": [(lexer.has("plus") ? {type: "plus"} : plus), "_", "keystroke", "_", (lexer.has("prod") ? {type: "prod"} : prod), "_", "basic_output", "_", (lexer.has("endl") ? {type: "endl"} : endl)], "postprocess": filter},
     {"name": "keystroke", "symbols": [(lexer.has("lbrace") ? {type: "lbrace"} : lbrace), "_", "modifierSet", "_", (lexer.has("ident") ? {type: "ident"} : ident), "_", (lexer.has("rbrace") ? {type: "rbrace"} : rbrace)], "postprocess": filter},
     {"name": "keystroke", "symbols": [(lexer.has("lbrace") ? {type: "lbrace"} : lbrace), "_", (lexer.has("ident") ? {type: "ident"} : ident), "_", (lexer.has("rbrace") ? {type: "rbrace"} : rbrace)], "postprocess": filter},
@@ -112,7 +120,7 @@ var grammar = {
     {"name": "_", "symbols": [(lexer.has("whitespace") ? {type: "whitespace"} : whitespace)], "postprocess": nil},
     {"name": "_", "symbols": []}
 ]
-  , ParserStart: "rule"
+  , ParserStart: "SOURCEFILE"
 }
 if (typeof module !== 'undefined'&& typeof module.exports !== 'undefined') {
    module.exports = grammar;
