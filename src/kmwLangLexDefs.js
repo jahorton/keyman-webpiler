@@ -1,9 +1,14 @@
+/**
+ * This is a file for independently testing the tokenization scheme used by the parser.  The
+ * master version of this should be within the keymanLang.ne file.
+ */
+
 keyman = typeof(keyman) == 'undefined' ? {} : keyman;
 keyman.language = typeof(keyman.language) == 'undefined' ? {} : keyman.language;
 
 keyman.language.initializeLexer = keyman.language["initializeLexer"] = function() {
     // moo - the default location of moo's main lexer object, which produces lexers.
-    var lexer = moo.compile({
+    const lexer = moo.compile({
         comment:    /c[^\S\n]+.*?$/,
         whitespace: /[^\S\n]+/,
         unicode:    /U\+[a-fA-F\d]+/,
@@ -12,10 +17,29 @@ keyman.language.initializeLexer = keyman.language["initializeLexer"] = function(
         ident:      { // TODO:  Needs a better regex that allows Unicode characters! /w doesn't work!!!
                         match: /[a-zA-Z_\d]+/u, // That 'u' says "Be unicode aware." [a-zA-Z_]
                         keywords: { 
-                            keyword:
-                            ["any", "baselayout", "beep", "begin", "call", "deadkey", "dk", "group", "if", "index", "layer",
-                            "match", "nomatch", "notany", "nul", "outs", "platform", "reset", "return", "save", "set", "store",
-                            "use", "using keys"]
+                            any:            "any",
+                            baselayout:     "baselayout",
+                            beep:           "beep",
+                            begin:          "begin",
+                            call:           "call",
+                            deadkey:        ["deadkey", "dk"],
+                            group:          "group",
+                            if:             "if",
+                            index:          "index",
+                            layer:          "layer",
+                            match:          "match",
+                            nomatch:        "nomatch",
+                            notany:         "notany",
+                            nul:            "nul",
+                            outs:           "outs",
+                            platform:       "platform",
+                            reset:          "reset",
+                            return:         "return",
+                            save:           "save",
+                            set:            "set",
+                            store:          "store",
+                            use:            "use",
+                            using_keys:     "using keys"
                         },
                         getType: function(x) {
                             var result = /\d+/.exec(x);
@@ -26,17 +50,17 @@ keyman.language.initializeLexer = keyman.language["initializeLexer"] = function(
                             }
                         }
                     },
-        newline:    { match: /\n/, lineBreaks: true },
+        endl:    { match: /\n/, lineBreaks: true },
         "(":        "(",
         ")":        ")",
-        "[":        "[",
-        "]":        "]",
+        lbrace:        "[",
+        rbrace:        "]",
         "+":        '+',
-        ">":        ">",
+        prod:        ">",
         "=":        "=",
         ",":        ",",
         string:     [ { match: /"[^"]*?"/, value: x => x.slice(1, -1)},
-                      { match: /'[^']*?'/, value: x => x.slice(1, -1)}],
+                        { match: /'[^']*?'/, value: x => x.slice(1, -1)}],
         "$":        "$",
         "&":        "&"
     });

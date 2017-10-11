@@ -1,5 +1,8 @@
-# Definition of a tokenizer for Keyman's keyboard definition language.
-@{%
+// Generated automatically by nearley
+// http://github.com/Hardmath123/nearley
+(function () {
+function id(x) {return x[0]; }
+
 const lexer = moo.compile({
     comment:    /c[^\S\n]+.*?$/,
     whitespace: /[^\S\n]+/,
@@ -94,27 +97,26 @@ const nil = function() {
 const unwrap = function(arr) {
     return arr[0];
 }
-%}
-
-@lexer lexer
-
-# Basic keystroke rule.
-rule -> %plus _ keystroke _ %prod _ basic_output _ %endl {% filter %} 
-
-keystroke -> %lbrace _ modifierSet _ %ident _ %rbrace {% filter %}
-           | %lbrace _ %ident _ %rbrace {% filter %}
-
-modifierSet -> modifierSet _ modifier {% (op) => flatten(filter(op)) %}  # Compositing two post-processing functs requires a lambda.
-             | modifier
-
-modifier -> %ident {% unwrap %}
-
-basic_output -> %string
-              | %unicode
-
-# whitespace 
-_ -> _ %comment {% nil %}
-   | %whitespace {% nil %}
-   | null
-
-
+var grammar = {
+    Lexer: lexer,
+    ParserRules: [
+    {"name": "rule", "symbols": [(lexer.has("plus") ? {type: "plus"} : plus), "_", "keystroke", "_", (lexer.has("prod") ? {type: "prod"} : prod), "_", "basic_output", "_", (lexer.has("endl") ? {type: "endl"} : endl)], "postprocess": filter},
+    {"name": "keystroke", "symbols": [(lexer.has("lbrace") ? {type: "lbrace"} : lbrace), "_", "modifierSet", "_", (lexer.has("ident") ? {type: "ident"} : ident), "_", (lexer.has("rbrace") ? {type: "rbrace"} : rbrace)], "postprocess": filter},
+    {"name": "keystroke", "symbols": [(lexer.has("lbrace") ? {type: "lbrace"} : lbrace), "_", (lexer.has("ident") ? {type: "ident"} : ident), "_", (lexer.has("rbrace") ? {type: "rbrace"} : rbrace)], "postprocess": filter},
+    {"name": "modifierSet", "symbols": ["modifierSet", "_", "modifier"], "postprocess": (op) => flatten(filter(op))},
+    {"name": "modifierSet", "symbols": ["modifier"]},
+    {"name": "modifier", "symbols": [(lexer.has("ident") ? {type: "ident"} : ident)], "postprocess": unwrap},
+    {"name": "basic_output", "symbols": [(lexer.has("string") ? {type: "string"} : string)]},
+    {"name": "basic_output", "symbols": [(lexer.has("unicode") ? {type: "unicode"} : unicode)]},
+    {"name": "_", "symbols": ["_", (lexer.has("comment") ? {type: "comment"} : comment)], "postprocess": nil},
+    {"name": "_", "symbols": [(lexer.has("whitespace") ? {type: "whitespace"} : whitespace)], "postprocess": nil},
+    {"name": "_", "symbols": []}
+]
+  , ParserStart: "rule"
+}
+if (typeof module !== 'undefined'&& typeof module.exports !== 'undefined') {
+   module.exports = grammar;
+} else {
+   window.grammar = grammar;
+}
+})();

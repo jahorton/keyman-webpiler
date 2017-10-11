@@ -6,15 +6,66 @@
         <title>Keyman-Webpiler:  Lexer rule testing</title>
         <script src="../ext/moo/moo.js" type="text/javascript"></script>
         <script src="../ext/nearley/nearley.js" type="text/javascript"></script>
+        <script src="../src/keymanGrammar.js" type="text/javascript"></script>
         <script type="text/javascript">
             function main() {
-                // To be written.
+                var div = document.getElementById("results");
+                var src = document.getElementById("src");
+
+                // Create a Parser object from our grammar.
+                const parser = new nearley.Parser(nearley.Grammar.fromCompiled(grammar));
+
+                // Parse something!
+                parser.feed(src.textContent + "\n");
+
+                // parser.results is an array of possible parsings.
+                //console.log(parser.results);
+
+                div.innerHTML = "";
+                var stack = new Array();
+                stack.push(parser.results);
+                var i;
+
+                while(stack.length > 0) {
+                    var height = stack.length - 1;
+
+                    if(stack[height].length == 0) {
+                        stack.pop();
+                        continue;
+                    }
+
+                    var elem = stack[height][0];
+                    stack[height] = stack[height].slice(1);
+
+                    if(Array.isArray(elem)) {
+                        stack.push(elem);
+                    } else {
+                        for(i=0; i < height - 1; i++) {
+                            div.innerHTML += "&gt;&gt;"; 
+                        }
+                        if(height != 0) {
+                            div.innerHTML += "&gt; ";
+                        }
+
+                        if(typeof(elem) == "string") {
+                            div.innerHTML += "<code>" + elem + "</code><br>";
+                        } else {
+                            div.innerHTML += "<code>" + elem.value + "</code><br>";
+                        }
+                        
+                    }
+                } 
             }
         </script>
     </head>
     <body>
         <!-- <input type='file' onchange='fileSelected(event)'/><br> -->
         <!-- <div id="tokens"></div> -->
+        <h1>Keyman Grammar Testing</h1>
+        <p>This page serves to test various simple inputs for the Keyman language's grammar.</p>
+        <p>Example: <code id=src contenteditable="true">+ [SHIFT K_E] > 'E'</code></p>
         <input type="button" value="Run test." onclick="main()"/>
+        <div id="results"></div>
+        <p><a href="./">Return to index.</a></p>
     </body>
 </html>
