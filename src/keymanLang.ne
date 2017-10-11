@@ -5,7 +5,7 @@
 // Defines a tokenizer for Keyman's keyboard definition language.
 const lexer = moo.compile({
     comment:    /c[^\S\n]+.*?$/,
-    whitespace: /[^\S\n]+/,
+    whitespace: [/[^\S\n]+/, /\\\r?\n/], // The latter allows 'long line' behavior for keyboard source file lines.
     unicode:    /U\+[a-fA-F\d]+/,
     hex:        /x[a-fA-F\d]+/,
     //number:     /\d+/,

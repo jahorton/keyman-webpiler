@@ -36,6 +36,7 @@ match > use(deadkeys)
 
 group(deadkeys) 
 
-store(dkf003b) U+0020 U+0065 U+006f U+006e U+0045 U+004f U+004e U+0049 U+0075 U+0069 U+007A U+005A U+0067 U+0047 
+store(dkf003b) U+0020 U+0065 U+006f U+006e U+0045 U+004f U+004e U+0049 U+0075 \
+U+0069 U+007A U+005A U+0067 U+0047 
 store(dkt003b) U+003b U+025b U+0254 U+014b U+0190 U+0186 U+014a U+018f U+028b U+0269 U+0292 U+01B7 U+0263 U+0194
 dk(003b) any(dkf003b) > index(dkt003b, 2)
