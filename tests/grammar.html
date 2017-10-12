@@ -18,7 +18,8 @@
                 // Parse something!
                 parser.feed(src.textContent + "\n");
 
-                var jsonFilter = [ "nodeType", "type", "value", "input", "output", "context", "trigger", "modifiers", "key"];
+                var jsonFilter = ["nodeType", "type", "value", "input", "output", "context", "trigger", 
+                    "modifiers", "key", "role", "store", "index"];
 
                 div.innerHTML = "";
 
@@ -40,7 +41,7 @@
         <!-- <div id="tokens"></div> -->
         <h1>Keyman Grammar Testing</h1>
         <p>This page serves to test various simple inputs for the Keyman language's grammar.</p>
-        <p>Example: <code id=src contenteditable="true">+ [SHIFT K_E] > 'E'</code></p>
+        <p>Example: <pre><code id=src contenteditable="true">+ [SHIFT K_E] > 'E'</code></pre></p>
         <input type="button" value="Run test." onclick="main()"/>
         <div id="results"></div>
         <p><a href="./">Return to index.</a></p>

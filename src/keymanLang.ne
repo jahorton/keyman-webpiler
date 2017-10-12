@@ -5,7 +5,10 @@
 // Defines a tokenizer for Keyman's keyboard definition language.
 const lexer = moo.compile({
     comment:    /c[^\S\n]+.*?$/,
-    whitespace: [/[^\S\n]+/, /\\\r?\n/], // The latter allows 'long line' behavior for keyboard source file lines.
+    whitespace: [ 
+                    { match:/[^\S\n]+/ }, 
+                    { match:/\\\r?\n/, lineBreaks:true } // This allows 'long line' behavior for keyboard source file lines.
+                ], 
     unicode:    /U\+[a-fA-F\d]+/,
     hex:        /x[a-fA-F\d]+/,
     //number:     /\d+/,
@@ -45,6 +48,7 @@ const lexer = moo.compile({
                         }
                     }
                 },
+    number:     /\d+/,
     endl:    { match: /\n/, lineBreaks: true },
     lparen:     "(",
     rparen:     ")",
@@ -99,8 +103,9 @@ const unwrap = function(arr) {
     return arr[0];
 }
 
-const ruleTuple = function(arr) {
-
+const assignRole = function(obj, role) {
+    obj.role = role;
+    return obj;
 }
 
 // Remnant of file:  the auto-generated parser.
@@ -110,13 +115,30 @@ const ruleTuple = function(arr) {
 
 # This should always be the first rule - it defines the grammar's root symbol.
 SOURCEFILE -> rule {% flatten %}
+            | store_decl {% flatten %}
+
+# Store declarations.
+store_decl -> %store ident_expr __ store_def_list _ %endl {% function(op) { return { nodeType:"storeDef", store:op[1], value:op[3] }; } %}
+
+store_def_list -> store_def_list __ store_def_val {% function(op) { return flatten(filter(op)); } %}
+                | store_def_val {% unwrap %}
+
+store_def_val -> %string {% unwrap %}
+               | %unicode {% unwrap %}
+
+# Other expressions using stores.
+
+any_expr -> %any ident_expr {% function(op) {return assignRole(op[1], "any");} %} 
+
+index_expr -> %index ident_num_expr {% function(op) {return assignRole(op[1], "index");} %} 
 
 # Basic keystroke rule.
 rule -> ruleInput _ %prod _ ruleOutput _ %endl {% function(op) { return { nodeType:"rule", input: op[0], output: op[4] }; } %} 
 
 ruleInput -> %plus _ ruleTrigger {% function(op) { return { context: null, trigger: op[2] }; } %}
 
-ruleTrigger => keystroke {% unwrap %}
+ruleTrigger -> keystroke {% unwrap %}
+             | any_expr
 
 ruleOutput -> basic_output
 
@@ -130,10 +152,19 @@ modifier -> %ident {% unwrap %}
 
 basic_output -> %string {% unwrap %}
               | %unicode {% unwrap %}
+              | index_expr {% unwrap %}
+
+ident_expr -> %lparen %sysstore %ident %rparen {% function(op) { return assignRole(op[1], "sysStore"); } %}
+            | %lparen %ident %rparen {% function(op) { return assignRole(op[1], "store"); } %}
+
+ident_num_expr -> %lparen _ %ident _ %comma _ %number _ %rparen {% function(op) { return { store: op[2], index: op[6] }; } %}
 
 # whitespace 
 _ -> _ %comment {% nil %}
-   | %whitespace {% nil %}
+   | _ %whitespace {% nil %}
    | null
+
+## required whitespace
+__ -> _ %whitespace {% nil %}
 
 
