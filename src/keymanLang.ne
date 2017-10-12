@@ -46,18 +46,18 @@ const lexer = moo.compile({
                     }
                 },
     endl:    { match: /\n/, lineBreaks: true },
-    "(":        "(",
-    ")":        ")",
+    lparen:     "(",
+    rparen:     ")",
     lbrace:     "[",
     rbrace:     "]",
     plus:       "+",
     prod:       ">",
     "=":        "=",
-    ",":        ",",
+    comma:      ",",
     string:     [ { match: /"[^"]*?"/, value: x => x.slice(1, -1)},
                     { match: /'[^']*?'/, value: x => x.slice(1, -1)}],
-    "$":        "$",
-    "&":        "&"
+    conststore: "$",
+    sysstore:   "&"
 });
 
 // Rule post-processing functions
@@ -99,27 +99,37 @@ const unwrap = function(arr) {
     return arr[0];
 }
 
+const ruleTuple = function(arr) {
+
+}
+
 // Remnant of file:  the auto-generated parser.
 %}
 
 @lexer lexer
 
 # This should always be the first rule - it defines the grammar's root symbol.
-SOURCEFILE -> rule {% unwrap %}
+SOURCEFILE -> rule {% flatten %}
 
 # Basic keystroke rule.
-rule -> %plus _ keystroke _ %prod _ basic_output _ %endl {% filter %} 
+rule -> ruleInput _ %prod _ ruleOutput _ %endl {% function(op) { return { nodeType:"rule", input: op[0], output: op[4] }; } %} 
 
-keystroke -> %lbrace _ modifierSet _ %ident _ %rbrace {% filter %}
-           | %lbrace _ %ident _ %rbrace {% filter %}
+ruleInput -> %plus _ ruleTrigger {% function(op) { return { context: null, trigger: op[2] }; } %}
+
+ruleTrigger => keystroke {% unwrap %}
+
+ruleOutput -> basic_output
+
+keystroke -> %lbrace _ modifierSet _ %ident _ %rbrace {% function(op) { return { modifiers: op[2], key: op[4]}; } %}
+           | %lbrace _ %ident _ %rbrace {% function(op) { return { modifiers: null, key: op[2]}; } %}
 
 modifierSet -> modifierSet _ modifier {% (op) => flatten(filter(op)) %}  # Compositing two post-processing functs requires a lambda.
              | modifier
 
 modifier -> %ident {% unwrap %}
 
-basic_output -> %string
-              | %unicode
+basic_output -> %string {% unwrap %}
+              | %unicode {% unwrap %}
 
 # whitespace 
 _ -> _ %comment {% nil %}

@@ -50,18 +50,18 @@ const lexer = moo.compile({
                     }
                 },
     endl:    { match: /\n/, lineBreaks: true },
-    "(":        "(",
-    ")":        ")",
+    lparen:     "(",
+    rparen:     ")",
     lbrace:     "[",
     rbrace:     "]",
     plus:       "+",
     prod:       ">",
     "=":        "=",
-    ",":        ",",
+    comma:      ",",
     string:     [ { match: /"[^"]*?"/, value: x => x.slice(1, -1)},
                     { match: /'[^']*?'/, value: x => x.slice(1, -1)}],
-    "$":        "$",
-    "&":        "&"
+    conststore: "$",
+    sysstore:   "&"
 });
 
 // Rule post-processing functions
@@ -103,19 +103,26 @@ const unwrap = function(arr) {
     return arr[0];
 }
 
+const ruleTuple = function(arr) {
+
+}
+
 // Remnant of file:  the auto-generated parser.
 var grammar = {
     Lexer: lexer,
     ParserRules: [
-    {"name": "SOURCEFILE", "symbols": ["rule"], "postprocess": unwrap},
-    {"name": "rule", "symbols": [(lexer.has("plus") ? {type: "plus"} : plus), "_", "keystroke", "_", (lexer.has("prod") ? {type: "prod"} : prod), "_", "basic_output", "_", (lexer.has("endl") ? {type: "endl"} : endl)], "postprocess": filter},
-    {"name": "keystroke", "symbols": [(lexer.has("lbrace") ? {type: "lbrace"} : lbrace), "_", "modifierSet", "_", (lexer.has("ident") ? {type: "ident"} : ident), "_", (lexer.has("rbrace") ? {type: "rbrace"} : rbrace)], "postprocess": filter},
-    {"name": "keystroke", "symbols": [(lexer.has("lbrace") ? {type: "lbrace"} : lbrace), "_", (lexer.has("ident") ? {type: "ident"} : ident), "_", (lexer.has("rbrace") ? {type: "rbrace"} : rbrace)], "postprocess": filter},
+    {"name": "SOURCEFILE", "symbols": ["rule"], "postprocess": flatten},
+    {"name": "rule", "symbols": ["ruleInput", "_", (lexer.has("prod") ? {type: "prod"} : prod), "_", "ruleOutput", "_", (lexer.has("endl") ? {type: "endl"} : endl)], "postprocess": function(op) { return { nodeType:"rule", input: op[0], output: op[4] }; }},
+    {"name": "ruleInput", "symbols": [(lexer.has("plus") ? {type: "plus"} : plus), "_", "ruleTrigger"], "postprocess": function(op) { return { context: null, trigger: op[2] }; }},
+    {"name": "ruleTrigger", "symbols": ["keystroke"], "postprocess": unwrap},
+    {"name": "ruleOutput", "symbols": ["basic_output"]},
+    {"name": "keystroke", "symbols": [(lexer.has("lbrace") ? {type: "lbrace"} : lbrace), "_", "modifierSet", "_", (lexer.has("ident") ? {type: "ident"} : ident), "_", (lexer.has("rbrace") ? {type: "rbrace"} : rbrace)], "postprocess": function(op) { return { modifiers: op[2], key: op[4]}; }},
+    {"name": "keystroke", "symbols": [(lexer.has("lbrace") ? {type: "lbrace"} : lbrace), "_", (lexer.has("ident") ? {type: "ident"} : ident), "_", (lexer.has("rbrace") ? {type: "rbrace"} : rbrace)], "postprocess": function(op) { return { modifiers: null, key: op[2]}; }},
     {"name": "modifierSet", "symbols": ["modifierSet", "_", "modifier"], "postprocess": (op) => flatten(filter(op))},
     {"name": "modifierSet", "symbols": ["modifier"]},
     {"name": "modifier", "symbols": [(lexer.has("ident") ? {type: "ident"} : ident)], "postprocess": unwrap},
-    {"name": "basic_output", "symbols": [(lexer.has("string") ? {type: "string"} : string)]},
-    {"name": "basic_output", "symbols": [(lexer.has("unicode") ? {type: "unicode"} : unicode)]},
+    {"name": "basic_output", "symbols": [(lexer.has("string") ? {type: "string"} : string)], "postprocess": unwrap},
+    {"name": "basic_output", "symbols": [(lexer.has("unicode") ? {type: "unicode"} : unicode)], "postprocess": unwrap},
     {"name": "_", "symbols": ["_", (lexer.has("comment") ? {type: "comment"} : comment)], "postprocess": nil},
     {"name": "_", "symbols": [(lexer.has("whitespace") ? {type: "whitespace"} : whitespace)], "postprocess": nil},
     {"name": "_", "symbols": []}

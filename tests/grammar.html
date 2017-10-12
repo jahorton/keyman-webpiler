@@ -18,43 +18,20 @@
                 // Parse something!
                 parser.feed(src.textContent + "\n");
 
-                // parser.results is an array of possible parsings.
-                //console.log(parser.results);
+                var jsonFilter = [ "nodeType", "type", "value", "input", "output", "context", "trigger", "modifiers", "key"];
 
                 div.innerHTML = "";
-                var stack = new Array();
-                stack.push(parser.results);
-                var i;
 
-                while(stack.length > 0) {
-                    var height = stack.length - 1;
+                if(parser.results.length > 1) {
+                    div.innerHTML += "<p><em><strong>Warning:  grammar is ambiguous!</strong></em></p>";
+                } else if(parser.results.length == 0) {
+                    div.innerHTML += "<p><em><strong>Error occurred while parsing. " + 
+                        "Please check your Developer-mode console.</strong></em></p>";
+                }
 
-                    if(stack[height].length == 0) {
-                        stack.pop();
-                        continue;
-                    }
-
-                    var elem = stack[height][0];
-                    stack[height] = stack[height].slice(1);
-
-                    if(Array.isArray(elem)) {
-                        stack.push(elem);
-                    } else {
-                        for(i=0; i < height - 1; i++) {
-                            div.innerHTML += "&gt;&gt;"; 
-                        }
-                        if(height != 0) {
-                            div.innerHTML += "&gt; ";
-                        }
-
-                        if(typeof(elem) == "string") {
-                            div.innerHTML += "<code>" + elem + "</code><br>";
-                        } else {
-                            div.innerHTML += "<code>" + elem.value + "</code><br>";
-                        }
-                        
-                    }
-                } 
+                var json = JSON.stringify(parser.results[0], jsonFilter, 2);
+                
+                div.innerHTML += "<pre><code>" + json + "</code></pre>";
             }
         </script>
     </head>
