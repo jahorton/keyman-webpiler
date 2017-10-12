@@ -154,7 +154,7 @@ basic_output -> %string {% unwrap %}
               | %unicode {% unwrap %}
               | index_expr {% unwrap %}
 
-ident_expr -> %lparen %sysstore %ident %rparen {% function(op) { return assignRole(op[1], "sysStore"); } %}
+ident_expr -> %lparen %sysstore %ident %rparen {% function(op) { return assignRole(op[2], "sysStore"); } %}
             | %lparen %ident %rparen {% function(op) { return assignRole(op[1], "store"); } %}
 
 ident_num_expr -> %lparen _ %ident _ %comma _ %number _ %rparen {% function(op) { return { store: op[2], index: op[6] }; } %}
@@ -165,6 +165,6 @@ _ -> _ %comment {% nil %}
    | null
 
 ## required whitespace
-__ -> _ %whitespace {% nil %}
+__ -> %whitespace _ {% nil %}
 
 
