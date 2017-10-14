@@ -116,13 +116,25 @@ const assignRole = function(obj, role) {
 @lexer lexer
 
 # This should always be the first rule - it defines the grammar's root symbol.
-SOURCEFILE -> keystroke_rule {% flatten %}
-            | store_decl {% flatten %}
+TESTBLOCK  -> keystroke_rule {% flatten %}
+            | free_line {% flatten %}
             | match_statement {% flatten %}
-            | begin_statement {% flatten %}
             | keys_group_statement {% flatten %}
+            | keys_group {% flatten %}
             | context_group_statement {% flatten %}
+#            | context_group {% flatten %}
             | null
+
+# This should always be the first rule - it defines the grammar's root symbol.
+SOURCEFILE -> free_line {% flatten %}
+            | keys_group {% flatten %}
+#            | context_group {% flatten %}
+            | null
+
+# "Free line" - a line that disregards 'group' scope and may exist outside of groups.
+free_line -> empty_line {% unwrap %}
+           | store_decl {% unwrap %}
+           | begin_statement {% unwrap %}
 
 empty_line -> _ %endl {% nil %}
 
@@ -152,6 +164,23 @@ match_statement -> %match   _ %prod _ %use ident_expr _ %endl {% function(op) { 
 
 # Group blocks
 
+   keys_group -> keys_group_statement    keys_group_block
+#context_group -> context_group_statement context_group_block
+
+   keys_group_block -> keys_group_block    keys_group_line    {% flatten %}
+                     | keys_group_line    {% unwrap %}
+
+#context_group_block -> context_group_block context_group_line {% flatten %}
+#                     | context_group_line {% unwrap %}
+
+   keys_group_line -> keystroke_rule {% unwrap %}
+                    | free_line {% unwrap %}
+                    | match_statement {% unwrap %}
+
+#context_group_line -> context_rule {% unwrap %}
+#                    | free_line {% unwrap %}
+#                    | match_statement {% unwrap %}
+
    keys_group_statement -> %group ident_expr _ %using_keys _ %endl {% function(op) { return {nodeType:"group", group: op[1], keys: true }; } %}
 context_group_statement -> %group ident_expr _ %endl {% function(op) { return {nodeType:"group", group: op[1], keys: false }; } %}
 
@@ -176,7 +205,10 @@ modifier -> %ident {% unwrap %}
 
 basic_output -> %string {% unwrap %}
               | %unicode {% unwrap %}
+              | deadkey {% unwrap %}
               | index_expr {% unwrap %}
+
+deadkey -> %deadkey ident_expr {% function(op) { return { nodeType:"deadkey", key: op[1] }; } %}
 
 ident_expr -> %lparen %sysstore %ident %rparen {% function(op) { return assignRole(op[2], "sysStore"); } %}
             | %lparen %ident %rparen {% function(op) { return assignRole(op[1], "store"); } %}
