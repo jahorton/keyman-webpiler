@@ -5,6 +5,7 @@
 // Defines a tokenizer for Keyman's keyboard definition language.
 const lexer = moo.compile({
     comment:    /c[^\S\n]+.*?$/,
+    using_keys: "using keys",
     whitespace: [ 
                     { match:/[^\S\n]+/ }, 
                     { match:/\\\r?\n/, lineBreaks:true } // This allows 'long line' behavior for keyboard source file lines.
@@ -38,8 +39,7 @@ const lexer = moo.compile({
                         set:            "set",
                         store:          "store",
                         Unicode:        "Unicode",
-                        use:            "use",
-                        using_keys:     "using keys"
+                        use:            "use"
                     },
                     getType: function(x) {
                         var result = /\d+/.exec(x);
@@ -120,6 +120,8 @@ SOURCEFILE -> keystroke_rule {% flatten %}
             | store_decl {% flatten %}
             | match_statement {% flatten %}
             | begin_statement {% flatten %}
+            | keys_group_statement {% flatten %}
+            | context_group_statement {% flatten %}
             | null
 
 empty_line -> _ %endl {% nil %}
@@ -147,6 +149,12 @@ begin_statement -> %begin _ encoding _ %prod _ %use ident_expr %endl {% function
 
 match_statement -> %match   _ %prod _ %use ident_expr _ %endl {% function(op) { return { nodeType:"match",   group: op[5]}; } %}
                  | %nomatch _ %prod _ %use ident_expr _ %endl {% function(op) { return { nodeType:"nomatch", group: op[5]}; } %}
+
+# Group blocks
+
+   keys_group_statement -> %group ident_expr _ %using_keys _ %endl {% function(op) { return {nodeType:"group", group: op[1], keys: true }; } %}
+context_group_statement -> %group ident_expr _ %endl {% function(op) { return {nodeType:"group", group: op[1], keys: false }; } %}
+
 
 # Basic keystroke rule.
 keystroke_rule -> keystroke_rule_input _ %prod _ ruleOutput _ %endl {% function(op) { return { nodeType:"rule", input: op[0], output: op[4] }; } %} 

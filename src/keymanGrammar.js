@@ -9,6 +9,7 @@ function id(x) {return x[0]; }
 // Defines a tokenizer for Keyman's keyboard definition language.
 const lexer = moo.compile({
     comment:    /c[^\S\n]+.*?$/,
+    using_keys: "using keys",
     whitespace: [ 
                     { match:/[^\S\n]+/ }, 
                     { match:/\\\r?\n/, lineBreaks:true } // This allows 'long line' behavior for keyboard source file lines.
@@ -42,8 +43,7 @@ const lexer = moo.compile({
                         set:            "set",
                         store:          "store",
                         Unicode:        "Unicode",
-                        use:            "use",
-                        using_keys:     "using keys"
+                        use:            "use"
                     },
                     getType: function(x) {
                         var result = /\d+/.exec(x);
@@ -122,6 +122,8 @@ var grammar = {
     {"name": "SOURCEFILE", "symbols": ["store_decl"], "postprocess": flatten},
     {"name": "SOURCEFILE", "symbols": ["match_statement"], "postprocess": flatten},
     {"name": "SOURCEFILE", "symbols": ["begin_statement"], "postprocess": flatten},
+    {"name": "SOURCEFILE", "symbols": ["keys_group_statement"], "postprocess": flatten},
+    {"name": "SOURCEFILE", "symbols": ["context_group_statement"], "postprocess": flatten},
     {"name": "SOURCEFILE", "symbols": []},
     {"name": "empty_line", "symbols": ["_", (lexer.has("endl") ? {type: "endl"} : endl)], "postprocess": nil},
     {"name": "store_decl", "symbols": [(lexer.has("store") ? {type: "store"} : store), "ident_expr", "__", "store_def_list", "_", (lexer.has("endl") ? {type: "endl"} : endl)], "postprocess": function(op) { return { nodeType:"storeDef", store:op[1], value:op[3] }; }},
@@ -134,6 +136,8 @@ var grammar = {
     {"name": "begin_statement", "symbols": [(lexer.has("begin") ? {type: "begin"} : begin), "_", "encoding", "_", (lexer.has("prod") ? {type: "prod"} : prod), "_", (lexer.has("use") ? {type: "use"} : use), "ident_expr", (lexer.has("endl") ? {type: "endl"} : endl)], "postprocess": function(op) { return {nodeType:"begin", group: op[7], encoding: op[2]};}},
     {"name": "match_statement", "symbols": [(lexer.has("match") ? {type: "match"} : match), "_", (lexer.has("prod") ? {type: "prod"} : prod), "_", (lexer.has("use") ? {type: "use"} : use), "ident_expr", "_", (lexer.has("endl") ? {type: "endl"} : endl)], "postprocess": function(op) { return { nodeType:"match",   group: op[5]}; }},
     {"name": "match_statement", "symbols": [(lexer.has("nomatch") ? {type: "nomatch"} : nomatch), "_", (lexer.has("prod") ? {type: "prod"} : prod), "_", (lexer.has("use") ? {type: "use"} : use), "ident_expr", "_", (lexer.has("endl") ? {type: "endl"} : endl)], "postprocess": function(op) { return { nodeType:"nomatch", group: op[5]}; }},
+    {"name": "keys_group_statement", "symbols": [(lexer.has("group") ? {type: "group"} : group), "ident_expr", "_", (lexer.has("using_keys") ? {type: "using_keys"} : using_keys), "_", (lexer.has("endl") ? {type: "endl"} : endl)], "postprocess": function(op) { return {nodeType:"group", group: op[1], keys: true }; }},
+    {"name": "context_group_statement", "symbols": [(lexer.has("group") ? {type: "group"} : group), "ident_expr", "_", (lexer.has("endl") ? {type: "endl"} : endl)], "postprocess": function(op) { return {nodeType:"group", group: op[1], keys: false }; }},
     {"name": "keystroke_rule", "symbols": ["keystroke_rule_input", "_", (lexer.has("prod") ? {type: "prod"} : prod), "_", "ruleOutput", "_", (lexer.has("endl") ? {type: "endl"} : endl)], "postprocess": function(op) { return { nodeType:"rule", input: op[0], output: op[4] }; }},
     {"name": "keystroke_rule_input", "symbols": [(lexer.has("plus") ? {type: "plus"} : plus), "_", "keystroke_rule_trigger"], "postprocess": function(op) { return { context: null, trigger: op[2] }; }},
     {"name": "keystroke_rule_trigger", "symbols": ["keystroke"], "postprocess": unwrap},
