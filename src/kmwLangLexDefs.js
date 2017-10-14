@@ -10,7 +10,10 @@ keyman.language.initializeLexer = keyman.language["initializeLexer"] = function(
     // moo - the default location of moo's main lexer object, which produces lexers.
     const lexer = moo.compile({
         comment:    /c[^\S\n]+.*?$/,
-        whitespace: [/[^\S\n]+/, /\\\r?\n/], // The latter allows 'long line' behavior for keyboard source file lines.
+        whitespace: [ 
+                        { match:/[^\S\n]+/ }, 
+                        { match:/\\\r?\n/, lineBreaks:true } // This allows 'long line' behavior for keyboard source file lines.
+                    ], 
         unicode:    /U\+[a-fA-F\d]+/,
         hex:        /x[a-fA-F\d]+/,
         //number:     /\d+/,
@@ -50,20 +53,21 @@ keyman.language.initializeLexer = keyman.language["initializeLexer"] = function(
                             }
                         }
                     },
+        number:     /\d+/,
         endl:    { match: /\n/, lineBreaks: true },
-        "(":        "(",
-        ")":        ")",
+        lparen:     "(",
+        rparen:     ")",
         lbrace:     "[",
         rbrace:     "]",
         plus:       "+",
         prod:       ">",
         "=":        "=",
-        ",":        ",",
+        comma:      ",",
         string:     [ { match: /"[^"]*?"/, value: x => x.slice(1, -1)},
                         { match: /'[^']*?'/, value: x => x.slice(1, -1)}],
-        "$":        "$",
-        "&":        "&"
+        conststore: "$",
+        sysstore:   "&"
     });
-
+    
     return lexer;
 }

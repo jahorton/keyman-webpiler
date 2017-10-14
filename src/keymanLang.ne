@@ -15,6 +15,7 @@ const lexer = moo.compile({
     ident:      { // TODO:  Needs a better regex that allows Unicode characters! /w doesn't work!!!
                     match: /[a-zA-Z_\d]+/u, // That 'u' says "Be unicode aware." [a-zA-Z_]
                     keywords: { 
+                        ANSI:           "ANSI",
                         any:            "any",
                         baselayout:     "baselayout",
                         beep:           "beep",
@@ -36,6 +37,7 @@ const lexer = moo.compile({
                         save:           "save",
                         set:            "set",
                         store:          "store",
+                        Unicode:        "Unicode",
                         use:            "use",
                         using_keys:     "using keys"
                     },
@@ -114,8 +116,13 @@ const assignRole = function(obj, role) {
 @lexer lexer
 
 # This should always be the first rule - it defines the grammar's root symbol.
-SOURCEFILE -> rule {% flatten %}
+SOURCEFILE -> keystroke_rule {% flatten %}
             | store_decl {% flatten %}
+            | match_statement {% flatten %}
+            | begin_statement {% flatten %}
+            | null
+
+empty_line -> _ %endl {% nil %}
 
 # Store declarations.
 store_decl -> %store ident_expr __ store_def_list _ %endl {% function(op) { return { nodeType:"storeDef", store:op[1], value:op[3] }; } %}
@@ -132,13 +139,22 @@ any_expr -> %any ident_expr {% function(op) {return assignRole(op[1], "any");} %
 
 index_expr -> %index ident_num_expr {% function(op) {return assignRole(op[1], "index");} %} 
 
+# begin statement
+
+begin_statement -> %begin _ encoding _ %prod _ %use ident_expr %endl {% function(op) { return {nodeType:"begin", group: op[7], encoding: op[2]};} %}
+
+# match/nomatch
+
+match_statement -> %match   _ %prod _ %use ident_expr _ %endl {% function(op) { return { nodeType:"match",   group: op[5]}; } %}
+                 | %nomatch _ %prod _ %use ident_expr _ %endl {% function(op) { return { nodeType:"nomatch", group: op[5]}; } %}
+
 # Basic keystroke rule.
-rule -> ruleInput _ %prod _ ruleOutput _ %endl {% function(op) { return { nodeType:"rule", input: op[0], output: op[4] }; } %} 
+keystroke_rule -> keystroke_rule_input _ %prod _ ruleOutput _ %endl {% function(op) { return { nodeType:"rule", input: op[0], output: op[4] }; } %} 
 
-ruleInput -> %plus _ ruleTrigger {% function(op) { return { context: null, trigger: op[2] }; } %}
+keystroke_rule_input -> %plus _ keystroke_rule_trigger {% function(op) { return { context: null, trigger: op[2] }; } %}
 
-ruleTrigger -> keystroke {% unwrap %}
-             | any_expr
+keystroke_rule_trigger -> keystroke {% unwrap %}
+                        | any_expr
 
 ruleOutput -> basic_output
 
@@ -158,6 +174,10 @@ ident_expr -> %lparen %sysstore %ident %rparen {% function(op) { return assignRo
             | %lparen %ident %rparen {% function(op) { return assignRole(op[1], "store"); } %}
 
 ident_num_expr -> %lparen _ %ident _ %comma _ %number _ %rparen {% function(op) { return { store: op[2], index: op[6] }; } %}
+
+encoding -> %ANSI {% unwrap %}
+          | %Unicode {% unwrap %}
+          | null {% function(op) { return { value:"ANSI" }; }%}
 
 # whitespace 
 _ -> _ %comment {% nil %}
