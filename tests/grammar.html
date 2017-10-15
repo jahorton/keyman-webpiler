@@ -50,9 +50,11 @@
             }
 
             function main() {
-                var jsonFilter = ["nodeType", "type", "value", "input", "output", "context", "trigger", "begin", "rules", "settings",
-                    "modifiers", "key", "role", "store", "index", "group", "encoding", "keys", "stores", "systemStores", "groups"];
+                var jsonFilter = ["nodeType", "type", "value", "input", "output", "context", "trigger", "rules", "settings",
+                    "modifiers", "key", "role", "store", "index", "group", "encoding", "keys"];
 
+                jsonFilter = jsonFilter.concat(["begin", "stores", "systemStores", "groups"]);
+                //jsonFilter = jsonFilter.concat(["groups"]);
                 runParse(jsonFilter);
             }
 
