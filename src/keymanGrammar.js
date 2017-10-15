@@ -76,7 +76,7 @@ const filter = function(arg) {
 
     var i;
     for(i=0; i < arg.length; i++) {
-        if(arg[i] == '') {
+        if(arg[i] == '' || arg[i] == null) {
             arg = arg.slice(0, i).concat(arg.slice(i+1));
             i--;
         }
@@ -115,21 +115,73 @@ const assignRole = function(obj, role) {
     return obj;
 }
 
+// Definition of our output parse structure.
+class ParseInfo {
+    constructor() {
+        this.stores = [];
+        this.groups = {};
+        this.systemStores = [];
+        this.activeGroup = "";
+    }
+
+    /* Analyzes each store rule's resulting object to determine whether or not it corresponds to a system store.
+     */
+    addStore(store) {
+        if(store.store.role == "sysStore") {
+            this.systemStores.push(store);
+        } else {
+            this.stores.push(store);
+        }
+    }
+
+    /* Despite the fact that each rule actually resolves fully before any group is complete, the 'earley' algorithm triggers
+     * group pre-processing first, since those rules appear viable to complete before a single rule is seen.  The corresponding
+     * group object for the rule will thus exist at this time.
+     */
+    addRule(rule) {
+        this.groups[this.activeGroup].rules.push(rule);
+    }
+
+    /* Interestingly, this function is called upon each potential completion of a group's rule, regardless of if it should 
+     * be extended due to rule recursion/extension.  Must be part of how the underlying 'earley' algorithm works.
+     * 
+     * At any rate, the group settings are received before any of the group's rules; thus, we ensure the group object is
+     * preserved so that it may accumulate rules.
+     */
+    createGroup(group) {
+        this.activeGroup = group.group.value;
+        this.groups[this.activeGroup] = this.groups[this.activeGroup] || {settings: group, rules: []};
+    }
+
+    /* Tracks the begin statement and assures that it is unique within a keyboard's source.
+     */
+    addBegin(begin) {
+        if(typeof(this.begin) == 'undefined') {
+            this.begin = begin;
+        } else {
+            throw "Error - a keyboard's source code may only include a single begin statement.";
+        }
+    }
+}
+
+var postProc = null;
+
 // Remnant of file:  the auto-generated parser.
 var grammar = {
     Lexer: lexer,
     ParserRules: [
-    {"name": "SOURCEFILE", "symbols": ["free_section", "file_section"], "postprocess": (op) => flatten(filter(op))},
-    {"name": "file_section", "symbols": ["file_section", "keys_group"], "postprocess": (op) => flatten(filter(op))},
-    {"name": "file_section", "symbols": ["file_section", "context_group"], "postprocess": (op) => flatten(filter(op))},
+    {"name": "SOURCEFILE", "symbols": ["init", "free_section", "file_section"], "postprocess": function(op) { return postProc; }},
+    {"name": "init", "symbols": [], "postprocess": function(op) { postProc = new ParseInfo(); }},
+    {"name": "file_section", "symbols": ["file_section", "keys_group"], "postprocess": function(op) { postProc.createGroup(op[1]); }},
+    {"name": "file_section", "symbols": ["file_section", "context_group"], "postprocess": function(op) { postProc.createGroup(op[1]); }},
     {"name": "file_section", "symbols": []},
     {"name": "free_section", "symbols": ["free_section", "free_line"], "postprocess": flatten},
     {"name": "free_section", "symbols": []},
     {"name": "free_line", "symbols": ["empty_line"], "postprocess": unwrap},
     {"name": "free_line", "symbols": ["store_decl"], "postprocess": unwrap},
-    {"name": "free_line", "symbols": ["begin_statement"], "postprocess": unwrap},
+    {"name": "free_line", "symbols": ["begin_statement"], "postprocess": function(op) { postProc.addBegin(op[0]); }},
     {"name": "empty_line", "symbols": ["_", (lexer.has("endl") ? {type: "endl"} : endl)], "postprocess": nil},
-    {"name": "store_decl", "symbols": [(lexer.has("store") ? {type: "store"} : store), "ident_expr", "__", "store_def_list", "_", (lexer.has("endl") ? {type: "endl"} : endl)], "postprocess": function(op) { return { nodeType:"storeDef", store:op[1], value:op[3] }; }},
+    {"name": "store_decl", "symbols": [(lexer.has("store") ? {type: "store"} : store), "ident_expr", "__", "store_def_list", "_", (lexer.has("endl") ? {type: "endl"} : endl)], "postprocess": function(op) { postProc.addStore({ nodeType:"storeDef", store:op[1], value:op[3] }); return null; }},
     {"name": "store_def_list", "symbols": ["store_def_list", "__", "store_def_val"], "postprocess": function(op) { return flatten(filter(op)); }},
     {"name": "store_def_list", "symbols": ["store_def_val"], "postprocess": unwrap},
     {"name": "store_def_val", "symbols": [(lexer.has("string") ? {type: "string"} : string)], "postprocess": unwrap},
@@ -143,18 +195,20 @@ var grammar = {
     {"name": "begin_statement", "symbols": [(lexer.has("begin") ? {type: "begin"} : begin), "_", "encoding", "_", (lexer.has("prod") ? {type: "prod"} : prod), "_", (lexer.has("use") ? {type: "use"} : use), "ident_expr", (lexer.has("endl") ? {type: "endl"} : endl)], "postprocess": function(op) { return {nodeType:"begin", group: op[7], encoding: op[2]};}},
     {"name": "match_statement", "symbols": [(lexer.has("match") ? {type: "match"} : match), "_", (lexer.has("prod") ? {type: "prod"} : prod), "_", (lexer.has("use") ? {type: "use"} : use), "ident_expr", "_", (lexer.has("endl") ? {type: "endl"} : endl)], "postprocess": function(op) { return { nodeType:"match",   group: op[5]}; }},
     {"name": "match_statement", "symbols": [(lexer.has("nomatch") ? {type: "nomatch"} : nomatch), "_", (lexer.has("prod") ? {type: "prod"} : prod), "_", (lexer.has("use") ? {type: "use"} : use), "ident_expr", "_", (lexer.has("endl") ? {type: "endl"} : endl)], "postprocess": function(op) { return { nodeType:"nomatch", group: op[5]}; }},
-    {"name": "keys_group", "symbols": ["keys_group_statement", "keys_group_block"]},
-    {"name": "context_group", "symbols": ["context_group_statement", "context_group_block"]},
-    {"name": "keys_group_block", "symbols": ["keys_group_block", "keys_group_line"], "postprocess": flatten},
-    {"name": "keys_group_block", "symbols": ["keys_group_line"], "postprocess": unwrap},
-    {"name": "context_group_block", "symbols": ["context_group_block", "context_group_line"], "postprocess": flatten},
-    {"name": "context_group_block", "symbols": ["context_group_line"], "postprocess": unwrap},
-    {"name": "keys_group_line", "symbols": ["keystroke_rule"], "postprocess": unwrap},
+    {"name": "keys_group", "symbols": ["keys_group_statement", "keys_group_block"], "postprocess": (op) => op[0]},
+    {"name": "context_group", "symbols": ["context_group_statement", "context_group_block"], "postprocess": (op) => op[0]},
+    {"name": "keys_group_block$ebnf$1", "symbols": ["keys_group_line"]},
+    {"name": "keys_group_block$ebnf$1", "symbols": ["keys_group_block$ebnf$1", "keys_group_line"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
+    {"name": "keys_group_block", "symbols": ["keys_group_block$ebnf$1"], "postprocess": flatten},
+    {"name": "context_group_block$ebnf$1", "symbols": ["context_group_line"]},
+    {"name": "context_group_block$ebnf$1", "symbols": ["context_group_block$ebnf$1", "context_group_line"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
+    {"name": "context_group_block", "symbols": ["context_group_block$ebnf$1"], "postprocess": flatten},
+    {"name": "keys_group_line", "symbols": ["keystroke_rule"], "postprocess": function(op) { postProc.addRule(op[0]); }},
     {"name": "keys_group_line", "symbols": ["free_line"], "postprocess": unwrap},
-    {"name": "keys_group_line", "symbols": ["match_statement"], "postprocess": unwrap},
-    {"name": "context_group_line", "symbols": ["context_rule"], "postprocess": unwrap},
+    {"name": "keys_group_line", "symbols": ["match_statement"], "postprocess": function(op) { postProc.addRule(op[0]); }},
+    {"name": "context_group_line", "symbols": ["context_rule"], "postprocess": function(op) { postProc.addRule(op[0]); }},
     {"name": "context_group_line", "symbols": ["free_line"], "postprocess": unwrap},
-    {"name": "context_group_line", "symbols": ["match_statement"], "postprocess": unwrap},
+    {"name": "context_group_line", "symbols": ["match_statement"], "postprocess": function(op) { postProc.addRule(op[0]); }},
     {"name": "keys_group_statement", "symbols": [(lexer.has("group") ? {type: "group"} : group), "ident_expr", "_", (lexer.has("using_keys") ? {type: "using_keys"} : using_keys), "_", (lexer.has("endl") ? {type: "endl"} : endl)], "postprocess": function(op) { return {nodeType:"group", group: op[1], keys: true }; }},
     {"name": "context_group_statement", "symbols": [(lexer.has("group") ? {type: "group"} : group), "ident_expr", "_", (lexer.has("endl") ? {type: "endl"} : endl)], "postprocess": function(op) { return {nodeType:"group", group: op[1], keys: false }; }},
     {"name": "keystroke_rule", "symbols": [(lexer.has("plus") ? {type: "plus"} : plus), "_", "keystroke_rule_head_trigger", "_", (lexer.has("prod") ? {type: "prod"} : prod), "_", "ruleOutput", "_", (lexer.has("endl") ? {type: "endl"} : endl)], "postprocess": function(op) { return { nodeType:"rule", input: { context: null, trigger: op[2] }, output: op[6] }; }},

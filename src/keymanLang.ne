@@ -72,7 +72,7 @@ const filter = function(arg) {
 
     var i;
     for(i=0; i < arg.length; i++) {
-        if(arg[i] == '') {
+        if(arg[i] == '' || arg[i] == null) {
             arg = arg.slice(0, i).concat(arg.slice(i+1));
             i--;
         }
@@ -111,6 +111,57 @@ const assignRole = function(obj, role) {
     return obj;
 }
 
+// Definition of our output parse structure.
+class ParseInfo {
+    constructor() {
+        this.stores = [];
+        this.groups = {};
+        this.systemStores = [];
+        this.activeGroup = "";
+    }
+
+    /* Analyzes each store rule's resulting object to determine whether or not it corresponds to a system store.
+     */
+    addStore(store) {
+        if(store.store.role == "sysStore") {
+            this.systemStores.push(store);
+        } else {
+            this.stores.push(store);
+        }
+    }
+
+    /* Despite the fact that each rule actually resolves fully before any group is complete, the 'earley' algorithm triggers
+     * group pre-processing first, since those rules appear viable to complete before a single rule is seen.  The corresponding
+     * group object for the rule will thus exist at this time.
+     */
+    addRule(rule) {
+        this.groups[this.activeGroup].rules.push(rule);
+    }
+
+    /* Interestingly, this function is called upon each potential completion of a group's rule, regardless of if it should 
+     * be extended due to rule recursion/extension.  Must be part of how the underlying 'earley' algorithm works.
+     * 
+     * At any rate, the group settings are received before any of the group's rules; thus, we ensure the group object is
+     * preserved so that it may accumulate rules.
+     */
+    createGroup(group) {
+        this.activeGroup = group.group.value;
+        this.groups[this.activeGroup] = this.groups[this.activeGroup] || {settings: group, rules: []};
+    }
+
+    /* Tracks the begin statement and assures that it is unique within a keyboard's source.
+     */
+    addBegin(begin) {
+        if(typeof(this.begin) == 'undefined') {
+            this.begin = begin;
+        } else {
+            throw "Error - a keyboard's source code may only include a single begin statement.";
+        }
+    }
+}
+
+var postProc = null;
+
 // Remnant of file:  the auto-generated parser.
 %}
 
@@ -129,10 +180,12 @@ const assignRole = function(obj, role) {
 #            | null
 
 # This should always be the first rule - it defines the grammar's root symbol.
-SOURCEFILE -> free_section file_section {% (op) => flatten(filter(op)) %}
+SOURCEFILE -> init free_section file_section {% function(op) { return postProc; } %}
 
-file_section -> file_section keys_group {% (op) => flatten(filter(op)) %}
-              | file_section context_group {% (op) => flatten(filter(op)) %}
+init -> null {% function(op) { postProc = new ParseInfo(); } %} 
+
+file_section -> file_section keys_group {% function(op) { postProc.createGroup(op[1]); } %}
+              | file_section context_group {% function(op) { postProc.createGroup(op[1]); } %}
               | null
 
 free_section -> free_section free_line {% flatten %}
@@ -141,12 +194,12 @@ free_section -> free_section free_line {% flatten %}
 # "Free line" - a line that disregards 'group' scope and may exist outside of groups.
 free_line -> empty_line {% unwrap %}
            | store_decl {% unwrap %}
-           | begin_statement {% unwrap %}
+           | begin_statement {% function(op) { postProc.addBegin(op[0]); } %}
 
 empty_line -> _ %endl {% nil %}
 
 # Store declarations.
-store_decl -> %store ident_expr __ store_def_list _ %endl {% function(op) { return { nodeType:"storeDef", store:op[1], value:op[3] }; } %}
+store_decl -> %store ident_expr __ store_def_list _ %endl {% function(op) { postProc.addStore({ nodeType:"storeDef", store:op[1], value:op[3] }); return null; } %}
 
 store_def_list -> store_def_list __ store_def_val {% function(op) { return flatten(filter(op)); } %}
                 | store_def_val {% unwrap %}
@@ -178,22 +231,20 @@ match_statement -> %match   _ %prod _ %use ident_expr _ %endl {% function(op) { 
 
 # Group blocks
 
-   keys_group -> keys_group_statement    keys_group_block
-context_group -> context_group_statement context_group_block
+   keys_group -> keys_group_statement    keys_group_block    {% (op) => op[0] %}
+context_group -> context_group_statement context_group_block {% (op) => op[0] %}
 
-   keys_group_block -> keys_group_block    keys_group_line    {% flatten %}
-                     | keys_group_line    {% unwrap %}
+   keys_group_block -> keys_group_line:+    {% flatten %}
 
-context_group_block -> context_group_block context_group_line {% flatten %}
-                     | context_group_line {% unwrap %}
+context_group_block -> context_group_line:+ {% flatten %}
 
-   keys_group_line -> keystroke_rule {% unwrap %}
+   keys_group_line -> keystroke_rule {% function(op) { postProc.addRule(op[0]); } %}
                     | free_line {% unwrap %}
-                    | match_statement {% unwrap %}
+                    | match_statement {% function(op) { postProc.addRule(op[0]); } %}
 
-context_group_line -> context_rule {% unwrap %}
+context_group_line -> context_rule {% function(op) { postProc.addRule(op[0]); } %}
                     | free_line {% unwrap %}
-                    | match_statement {% unwrap %}
+                    | match_statement {% function(op) { postProc.addRule(op[0]); } %}
 
    keys_group_statement -> %group ident_expr _ %using_keys _ %endl {% function(op) { return {nodeType:"group", group: op[1], keys: true }; } %}
 context_group_statement -> %group ident_expr _ %endl {% function(op) { return {nodeType:"group", group: op[1], keys: false }; } %}

@@ -33,11 +33,16 @@
                         "Please check your Developer-mode console.</strong></em></p>";
                 }
 
-                var json;
+                var json;                
                 if(typeof(jsonFilter) == "undefined") {
                     json = JSON.stringify(parser.results[0], null, 2);
                 } else {
-                    json = JSON.stringify(parser.results[0], jsonFilter, 2);
+                    var finalFilter = [].concat(jsonFilter);
+                    for(var name in parser.results[0].groups) {
+                        finalFilter.push(name);
+                    }
+
+                    json = JSON.stringify(parser.results[0], finalFilter, 2);
                 }
                 
                 
@@ -45,8 +50,8 @@
             }
 
             function main() {
-                var jsonFilter = ["nodeType", "type", "value", "input", "output", "context", "trigger", 
-                    "modifiers", "key", "role", "store", "index", "group", "encoding", "keys"];
+                var jsonFilter = ["nodeType", "type", "value", "input", "output", "context", "trigger", "begin", "rules", "settings",
+                    "modifiers", "key", "role", "store", "index", "group", "encoding", "keys", "stores", "systemStores", "groups"];
 
                 runParse(jsonFilter);
             }
