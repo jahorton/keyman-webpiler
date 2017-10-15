@@ -22,6 +22,7 @@ const lexer = moo.compile({
                         beep:           "beep",
                         begin:          "begin",
                         call:           "call",
+                        context:        "context",
                         deadkey:        ["deadkey", "dk"],
                         group:          "group",
                         if:             "if",
@@ -116,20 +117,26 @@ const assignRole = function(obj, role) {
 @lexer lexer
 
 # This should always be the first rule - it defines the grammar's root symbol.
-TESTBLOCK  -> keystroke_rule {% flatten %}
-            | free_line {% flatten %}
-            | match_statement {% flatten %}
-            | keys_group_statement {% flatten %}
-            | keys_group {% flatten %}
-            | context_group_statement {% flatten %}
+#TESTBLOCK  -> keystroke_rule {% flatten %}
+#            | free_line {% flatten %}
+#            | free_section {% flatten %}
+#            | match_statement {% flatten %}
+#            | keys_group_statement {% flatten %}
+#            | keys_group {% flatten %}
+#            | context_group_statement {% flatten %}
 #            | context_group {% flatten %}
-            | null
+#            | context_rule {% flatten %}
+#            | null
 
 # This should always be the first rule - it defines the grammar's root symbol.
-SOURCEFILE -> free_line {% flatten %}
-            | keys_group {% flatten %}
-#            | context_group {% flatten %}
-            | null
+SOURCEFILE -> free_section file_section {% (op) => flatten(filter(op)) %}
+
+file_section -> file_section keys_group {% (op) => flatten(filter(op)) %}
+              | file_section context_group {% (op) => flatten(filter(op)) %}
+              | null
+
+free_section -> free_section free_line {% flatten %}
+              | null
 
 # "Free line" - a line that disregards 'group' scope and may exist outside of groups.
 free_line -> empty_line {% unwrap %}
@@ -149,9 +156,16 @@ store_def_val -> %string {% unwrap %}
 
 # Other expressions using stores.
 
-any_expr -> %any ident_expr {% function(op) {return assignRole(op[1], "any");} %} 
+any_expr -> %any ident_expr {% function(op) {return assignRole(op[1], "any");} %}
+
+notany_expr -> %notany ident_expr  {% function(op) {return assignRole(op[1], "notany");} %}
 
 index_expr -> %index ident_num_expr {% function(op) {return assignRole(op[1], "index");} %} 
+
+outs_expr -> %outs ident_expr {% function(op) {return assignRole(op[1], "outs");} %}
+           | outs_char_expr {% unwrap %}
+
+outs_char_expr -> %conststore %ident {% function(op) {return assignRole(op[1], "outs");} %}  # TODO:  Filter based on store size!
 
 # begin statement
 
@@ -165,33 +179,48 @@ match_statement -> %match   _ %prod _ %use ident_expr _ %endl {% function(op) { 
 # Group blocks
 
    keys_group -> keys_group_statement    keys_group_block
-#context_group -> context_group_statement context_group_block
+context_group -> context_group_statement context_group_block
 
    keys_group_block -> keys_group_block    keys_group_line    {% flatten %}
                      | keys_group_line    {% unwrap %}
 
-#context_group_block -> context_group_block context_group_line {% flatten %}
-#                     | context_group_line {% unwrap %}
+context_group_block -> context_group_block context_group_line {% flatten %}
+                     | context_group_line {% unwrap %}
 
    keys_group_line -> keystroke_rule {% unwrap %}
                     | free_line {% unwrap %}
                     | match_statement {% unwrap %}
 
-#context_group_line -> context_rule {% unwrap %}
-#                    | free_line {% unwrap %}
-#                    | match_statement {% unwrap %}
+context_group_line -> context_rule {% unwrap %}
+                    | free_line {% unwrap %}
+                    | match_statement {% unwrap %}
 
    keys_group_statement -> %group ident_expr _ %using_keys _ %endl {% function(op) { return {nodeType:"group", group: op[1], keys: true }; } %}
 context_group_statement -> %group ident_expr _ %endl {% function(op) { return {nodeType:"group", group: op[1], keys: false }; } %}
 
 
 # Basic keystroke rule.
-keystroke_rule -> keystroke_rule_input _ %prod _ ruleOutput _ %endl {% function(op) { return { nodeType:"rule", input: op[0], output: op[4] }; } %} 
+keystroke_rule -> %plus _ keystroke_rule_head_trigger _ %prod _ ruleOutput _ %endl {% function(op) { return { nodeType:"rule", input: { context: null, trigger: op[2] }, output: op[6] }; } %} 
+                | context_rule_input _ %plus _ keystroke_rule_trigger _ %prod _ ruleOutput _ %endl {% function(op) { return { nodeType:"rule", input: { context: op[0], trigger: op[4] }, output: op[8] }; } %} 
 
-keystroke_rule_input -> %plus _ keystroke_rule_trigger {% function(op) { return { context: null, trigger: op[2] }; } %}
+keystroke_rule_head_trigger -> keystroke {% unwrap %}
+                             | trigger_head_expr {% unwrap %}
 
 keystroke_rule_trigger -> keystroke {% unwrap %}
-                        | any_expr
+                        | trigger_expr {% unwrap %}
+
+# Basic context rules
+context_rule -> context_rule_input _ %prod _ ruleOutput _ %endl {% function(op) { return { nodeType:"rule", input: op[0], output: op[4] }; } %}
+
+context_rule_input -> char_val_head_expr _ context_rule_input_tail {% (op) => flatten(filter(op)) %}
+                    | char_val_head_expr {% unwrap %}
+
+context_rule_input_tail -> context_rule_input_tail _ char_val_expr {% (op) => flatten(filter(op)) %}
+                         | context_rule_input_tail _ string_val_expr {% (op) => flatten(filter(op)) %}
+                         | char_val_expr {% unwrap %}
+                         | string_val_expr {% unwrap %}
+
+# Optional input context:  (wrapper term to produce either the overall context term or a null)
 
 ruleOutput -> basic_output
 
@@ -205,10 +234,34 @@ modifier -> %ident {% unwrap %}
 
 basic_output -> %string {% unwrap %}
               | %unicode {% unwrap %}
-              | deadkey {% unwrap %}
+              | deadkey_expr {% unwrap %}
+              | index_expr {% unwrap %}
+              | context_expr {% unwrap %}
+
+# A context output statement.
+
+context_expr -> %context ident_expr {% function(op) { return { nodeType:"context", key: op[1] }; } %}
+
+# char_val_expr - expressions that may resolve to a single character and can appear in many spots.
+
+char_val_expr -> char_val_head_expr {% unwrap %}
+               | index_expr {% unwrap %}
+
+# These are the char-valued symbols that may be output in the initial context slot.
+char_val_head_expr -> deadkey_expr {% unwrap %}
+                    | trigger_head_expr {% unwrap %}
+
+trigger_expr -> trigger_head_expr {% unwrap %}
               | index_expr {% unwrap %}
 
-deadkey -> %deadkey ident_expr {% function(op) { return { nodeType:"deadkey", key: op[1] }; } %}
+trigger_head_expr -> any_expr {% unwrap %}
+                   | char_string {% unwrap %}
+                   | outs_char_expr {% unwrap %}
+
+string_val_expr -> %string {% unwrap %}
+                 | outs_expr {% unwrap %}
+
+deadkey_expr -> %deadkey ident_expr {% function(op) { return { nodeType:"deadkey", key: op[1] }; } %}
 
 ident_expr -> %lparen %sysstore %ident %rparen {% function(op) { return assignRole(op[2], "sysStore"); } %}
             | %lparen %ident %rparen {% function(op) { return assignRole(op[1], "store"); } %}
@@ -219,12 +272,12 @@ encoding -> %ANSI {% unwrap %}
           | %Unicode {% unwrap %}
           | null {% function(op) { return { value:"ANSI" }; }%}
 
+char_string -> %string {% unwrap /* TODO:  Throw errors if a string doesn't resolve to a single char. */ %}
+
 # whitespace 
 _ -> _ %comment {% nil %}
    | _ %whitespace {% nil %}
    | null
 
-## required whitespace
+# required whitespace
 __ -> %whitespace _ {% nil %}
-
-
