@@ -7,6 +7,7 @@
         <script src="../ext/moo/moo.js" type="text/javascript"></script>
         <script src="../ext/nearley/nearley.js" type="text/javascript"></script>
         <script src="../src/keymanGrammar.js" type="text/javascript"></script>
+        <script src="../src/parseToJSON.js" type="text/javascript"></script>
         <script type="text/javascript">
             function runParse(jsonFilter) {
                 var div = document.getElementById("results");
@@ -18,6 +19,7 @@
                 // Parse something!
                 try {
                     parser.feed(src.innerText + "\n");
+                    delete parser.results[0].activeGroup;
                 } catch (e) {
                     div.innerHTML = "<p><em><strong>Lexing/Parsing error occurred.</strong></em></p>" +
                         "<pre><code>" + e + "</code></pre>";
@@ -33,6 +35,10 @@
                         "Please check your Developer-mode console.</strong></em></p>";
                 }
 
+                var compiler = new ParseProcessor(parser.results[0].begin);
+                //compiler.processStores(parser.results[0].stores);
+                //compiler.processSystemStores(parser.results[0].systemStores);
+
                 var json;                
                 if(typeof(jsonFilter) == "undefined") {
                     json = JSON.stringify(parser.results[0], null, 2);
@@ -44,7 +50,6 @@
 
                     json = JSON.stringify(parser.results[0], finalFilter, 2);
                 }
-                
                 
                 div.innerHTML += "<pre><code>" + json + "</code></pre>";
             }

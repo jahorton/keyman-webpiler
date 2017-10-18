@@ -61,8 +61,10 @@ const lexer = moo.compile({
     prod:       ">",
     "=":        "=",
     comma:      ",",
-    string:     [ { match: /"[^"]*?"/, value: x => x.slice(1, -1)},
-                    { match: /'[^']*?'/, value: x => x.slice(1, -1)}],
+    string:     [ 
+                    { match: /"[^"]*?"/, value: x => x.slice(1, -1)},
+                    { match: /'[^']*?'/, value: x => x.slice(1, -1)}
+                ],
     conststore: "$",
     sysstore:   "&"
 });
@@ -206,6 +208,7 @@ store_def_list -> store_def_list __ store_def_val {% function(op) { return flatt
 
 store_def_val -> %string {% unwrap %}
                | %unicode {% unwrap %}
+               | outs_expr {% unwrap %}
 
 # Other expressions using stores.
 
@@ -283,7 +286,7 @@ modifierSet -> modifierSet _ modifier {% (op) => flatten(filter(op)) %}  # Compo
 
 modifier -> %ident {% unwrap %}
 
-basic_output -> %string {% unwrap %}
+basic_output -> string_val_expr {% unwrap %}
               | %unicode {% unwrap %}
               | deadkey_expr {% unwrap %}
               | index_expr {% unwrap %}
@@ -311,6 +314,7 @@ trigger_head_expr -> any_expr {% unwrap %}
 
 string_val_expr -> %string {% unwrap %}
                  | outs_expr {% unwrap %}
+                 | outs_char_expr {% unwrap %}
 
 deadkey_expr -> %deadkey ident_expr {% function(op) { return { nodeType:"deadkey", key: op[1] }; } %}
 

@@ -65,8 +65,10 @@ const lexer = moo.compile({
     prod:       ">",
     "=":        "=",
     comma:      ",",
-    string:     [ { match: /"[^"]*?"/, value: x => x.slice(1, -1)},
-                    { match: /'[^']*?'/, value: x => x.slice(1, -1)}],
+    string:     [ 
+                    { match: /"[^"]*?"/, value: x => x.slice(1, -1)},
+                    { match: /'[^']*?'/, value: x => x.slice(1, -1)}
+                ],
     conststore: "$",
     sysstore:   "&"
 });
@@ -186,6 +188,7 @@ var grammar = {
     {"name": "store_def_list", "symbols": ["store_def_val"], "postprocess": unwrap},
     {"name": "store_def_val", "symbols": [(lexer.has("string") ? {type: "string"} : string)], "postprocess": unwrap},
     {"name": "store_def_val", "symbols": [(lexer.has("unicode") ? {type: "unicode"} : unicode)], "postprocess": unwrap},
+    {"name": "store_def_val", "symbols": ["outs_expr"], "postprocess": unwrap},
     {"name": "any_expr", "symbols": [(lexer.has("any") ? {type: "any"} : any), "ident_expr"], "postprocess": function(op) {return assignRole(op[1], "any");}},
     {"name": "notany_expr", "symbols": [(lexer.has("notany") ? {type: "notany"} : notany), "ident_expr"], "postprocess": function(op) {return assignRole(op[1], "notany");}},
     {"name": "index_expr", "symbols": [(lexer.has("index") ? {type: "index"} : index), "ident_num_expr"], "postprocess": function(op) {return assignRole(op[1], "index");}},
@@ -230,7 +233,7 @@ var grammar = {
     {"name": "modifierSet", "symbols": ["modifierSet", "_", "modifier"], "postprocess": (op) => flatten(filter(op))},
     {"name": "modifierSet", "symbols": ["modifier"]},
     {"name": "modifier", "symbols": [(lexer.has("ident") ? {type: "ident"} : ident)], "postprocess": unwrap},
-    {"name": "basic_output", "symbols": [(lexer.has("string") ? {type: "string"} : string)], "postprocess": unwrap},
+    {"name": "basic_output", "symbols": ["string_val_expr"], "postprocess": unwrap},
     {"name": "basic_output", "symbols": [(lexer.has("unicode") ? {type: "unicode"} : unicode)], "postprocess": unwrap},
     {"name": "basic_output", "symbols": ["deadkey_expr"], "postprocess": unwrap},
     {"name": "basic_output", "symbols": ["index_expr"], "postprocess": unwrap},
@@ -247,6 +250,7 @@ var grammar = {
     {"name": "trigger_head_expr", "symbols": ["outs_char_expr"], "postprocess": unwrap},
     {"name": "string_val_expr", "symbols": [(lexer.has("string") ? {type: "string"} : string)], "postprocess": unwrap},
     {"name": "string_val_expr", "symbols": ["outs_expr"], "postprocess": unwrap},
+    {"name": "string_val_expr", "symbols": ["outs_char_expr"], "postprocess": unwrap},
     {"name": "deadkey_expr", "symbols": [(lexer.has("deadkey") ? {type: "deadkey"} : deadkey), "ident_expr"], "postprocess": function(op) { return { nodeType:"deadkey", key: op[1] }; }},
     {"name": "ident_expr", "symbols": [(lexer.has("lparen") ? {type: "lparen"} : lparen), (lexer.has("sysstore") ? {type: "sysstore"} : sysstore), (lexer.has("ident") ? {type: "ident"} : ident), (lexer.has("rparen") ? {type: "rparen"} : rparen)], "postprocess": function(op) { return assignRole(op[2], "sysStore"); }},
     {"name": "ident_expr", "symbols": [(lexer.has("lparen") ? {type: "lparen"} : lparen), (lexer.has("ident") ? {type: "ident"} : ident), (lexer.has("rparen") ? {type: "rparen"} : rparen)], "postprocess": function(op) { return assignRole(op[1], "store"); }},
