@@ -9,7 +9,7 @@
         <script src="../src/keymanGrammar.js" type="text/javascript"></script>
         <script src="../src/parseToJSON.js" type="text/javascript"></script>
         <script type="text/javascript">
-            function runParse(jsonFilter) {
+            function runParse() {
                 var div = document.getElementById("results");
                 var src = document.getElementById("src");
 
@@ -35,36 +35,51 @@
                         "Please check your Developer-mode console.</strong></em></p>";
                 }
 
-                var compiler = new ParseProcessor(parser.results[0].begin);
-                //compiler.processStores(parser.results[0].stores);
-                //compiler.processSystemStores(parser.results[0].systemStores);
+                return parser.results[0];
+            }
+
+            function outputNearleyParse(jsonFilter) {
+                var result = runParse();
+
+                var div = document.getElementById("results");
 
                 var json;                
                 if(typeof(jsonFilter) == "undefined") {
-                    json = JSON.stringify(parser.results[0], null, 2);
+                    json = JSON.stringify(result, null, 2);
                 } else {
                     var finalFilter = [].concat(jsonFilter);
-                    for(var name in parser.results[0].groups) {
+                    for(var name in result.groups) {
                         finalFilter.push(name);
                     }
 
-                    json = JSON.stringify(parser.results[0], finalFilter, 2);
+                    json = JSON.stringify(result, finalFilter, 2);
                 }
                 
                 div.innerHTML += "<pre><code>" + json + "</code></pre>";
             }
 
-            function main() {
+            function simpleNearley() {
                 var jsonFilter = ["nodeType", "type", "value", "input", "output", "context", "trigger", "rules", "settings",
                     "modifiers", "key", "role", "store", "index", "group", "encoding", "keys"];
 
-                jsonFilter = jsonFilter.concat([/*"begin", "stores", "systemStores", */"groups"]);
+                jsonFilter = jsonFilter.concat(["begin", "stores", "systemStores", "groups"]);
                 //jsonFilter = jsonFilter.concat(["groups"]);
-                runParse(jsonFilter);
+                outputNearleyParse(jsonFilter);
             }
 
-            function raw() {
-                runParse();
+            function rawNearley() {
+                outputNearleyParse();
+            }
+
+            function processedParse() {
+                var div = document.getElementById("results");
+                var result = runParse();
+
+                var compiler = new ParseProcessor(result.begin);
+                var result = compiler.process(result);
+
+                json = JSON.stringify(result, null, 2);
+                div.innerHTML += "<pre><code>" + json + "</code></pre>";
             }
         </script>
     </head>
@@ -73,7 +88,9 @@
         <!-- <div id="tokens"></div> -->
         <h1>Keyman Grammar Testing</h1>
         <p>This page serves to test various simple inputs for the Keyman language's grammar.</p>
-        <input type="button" value="Run test." onclick="main()"/><input type="button" value="Obtain full parse JSON." onclick="raw()"/>
+        <input type="button" value="Obtain compiled JSON." onclick="processedParse()"/>
+        <input type="button" value="Obtain filtered parse JSON." onclick="simpleNearley()"/>
+        <input type="button" value="Obtain full parse JSON." onclick="rawNearley()"/>
         <hr>
         <p>Example: 
 <pre><code style="white-space:pre" id=src contenteditable="true">c This is actual code from ghana.kmn, with a few modifications for testing.
@@ -119,7 +136,9 @@ U+0069 U+007A U+005A U+0067 U+0047
 store(dkt003b) U+003b U+025b U+0254 U+014b U+0190 U+0186 U+014a U+018f U+028b U+0269 U+0292 U+01B7 U+0263 U+0194
 dk(003b) any(dkf003b) > index(dkt003b, 2)
 </code></pre></p>
-        <input type="button" value="Run test." onclick="main()"/><input type="button" value="Obtain full parse JSON." onclick="raw()"/>
+        <input type="button" value="Obtain compiled JSON." onclick="processedParse()"/>
+        <input type="button" value="Obtain filtered parse JSON." onclick="simpleNearley()"/>
+        <input type="button" value="Obtain full parse JSON." onclick="rawNearley()"/>
         <hr>
         <div id="results"></div>
         <p><a href="./">Return to index.</a></p>

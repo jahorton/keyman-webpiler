@@ -1,10 +1,9 @@
 class ParseProcessor {
-    constructor(initialGroup) {
+    constructor() {
         this.processed = {
             stores: {}, 
             sysStores: {},
             groups: {},
-            begin: initialGroup
         };
 
         this.warnings = [];
@@ -91,11 +90,6 @@ class ParseProcessor {
                 this.processed.stores[name] = value;
             }
         }
-
-        // TODO:  Move the error output to the end of all processing.
-        if(this.errors.length > 0) {
-            console.error(this.errors);
-        }
     }
 
     validateSystemStoreValue(store, value) {
@@ -123,9 +117,63 @@ class ParseProcessor {
             }
         }
 
-        // TODO:  Move the error output to the end of all processing.
+    }
+
+    processGroups(groupDefs) {
+        for(var group in groupDefs) {
+            var rules = [];
+            var usingKeys = groupDefs[group].settings.keys;
+            var ruleDefs = groupDefs[group].rules;
+
+            // TODO:  Properly process each rule of the group.
+            for(var i=0; i < ruleDefs.length; i++) {
+                rules.push(this.processRule(ruleDefs[i]));
+            }
+
+            this.processed.groups[group] = { rules: rules, using_keys: usingKeys };
+        }
+
+        //console.log(this.processed.groups);
+    }
+
+    processRule(ruleDef) { 
+        switch(ruleDef.nodeType) {
+            case 'rule':
+                break;
+            case 'match':
+                break;
+        }
+
+        // TODO:  Actually implement.
+
+        return ruleDef;
+    }
+
+    processBegin(beginDef) {
+        this.processed.begin = beginDef.group.value;
+        this.processed.encoding = beginDef.encoding.value;
+        // TODO:  Ensure it's either ANSI or Unicode.  Well, really, Unicode.
+    }
+
+    process(parseInfo) {
+        this.processBegin(parseInfo.begin);
+        this.processSystemStores(parseInfo.systemStores);
+        this.processStores(parseInfo.stores);
+        this.processGroups(parseInfo.groups);
+
+        // TODO:  Verify all match rules here, as well as the begin statement's group.
+
         if(this.errors.length > 0) {
             console.error(this.errors);
+            if(this.warnings.length > 0) {
+                console.warn(this.warnings);
+            }
+            return;
+        } else {
+            if(this.warnings.length > 0) {
+                console.warn(this.warnings);
+            }
+            return this.processed;
         }
     }
 }
