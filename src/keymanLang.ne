@@ -49,10 +49,18 @@ const lexer = moo.compile({
                         } else {
                             return 'ident';
                         }
+                    },
+                    value: function(x) {
+                        var result = /\d+/.exec(x);
+                        if(result && result[0] == x) {
+                            return parseInt(x);
+                        } else {
+                            return x;
+                        }
                     }
                 },
-    number:     /\d+/,
-    endl:    { match: /\n/, lineBreaks: true },
+    number:     { match: /\d+/, value: x => parseInt(x) },  // Redundant, but necessary to prevent 'moo' errors.
+    endl:       { match: /\n/, lineBreaks: true },
     lparen:     "(",
     rparen:     ")",
     lbrace:     "[",
@@ -264,7 +272,7 @@ keystroke_rule_trigger -> keystroke {% unwrap %}
                         | trigger_expr {% unwrap %}
 
 # Basic context rules
-context_rule -> context_rule_input _ %prod _ ruleOutput _ %endl {% function(op) { return { nodeType:"rule", input: op[0], output: op[4] }; } %}
+context_rule -> context_rule_input _ %prod _ ruleOutput _ %endl {% function(op) { return { nodeType:"rule", input: { context: op[0], trigger: null}, output: op[4] }; } %}
 
 context_rule_input -> char_val_head_expr _ context_rule_input_tail {% (op) => flatten(filter(op)) %}
                     | char_val_head_expr {% unwrap %}
@@ -278,7 +286,7 @@ context_rule_input_tail -> context_rule_input_tail _ char_val_expr {% (op) => fl
 
 ruleOutput -> basic_output
 
-keystroke -> %lbrace _ modifierSet _ %ident _ %rbrace {% function(op) { return { modifiers: op[2], key: op[4]}; } %}
+keystroke -> %lbrace _ modifierSet _ %ident _ %rbrace {% function(op) { return { modifiers: op[2], key: op[4]}; } %}  # Only uses of the 'key' property.  Marks as 'virtual'.
            | %lbrace _ %ident _ %rbrace {% function(op) { return { modifiers: null, key: op[2]}; } %}
 
 modifierSet -> modifierSet _ modifier {% (op) => flatten(filter(op)) %}  # Compositing two post-processing functs requires a lambda.
@@ -294,7 +302,7 @@ basic_output -> string_val_expr {% unwrap %}
 
 # A context output statement.
 
-context_expr -> %context ident_expr {% function(op) { return { nodeType:"context", key: op[1] }; } %}
+context_expr -> %context num_expr {% function(op) { return assignRole(op[1], "context"); } %}
 
 # char_val_expr - expressions that may resolve to a single character and can appear in many spots.
 
@@ -316,12 +324,14 @@ string_val_expr -> %string {% unwrap %}
                  | outs_expr {% unwrap %}
                  | outs_char_expr {% unwrap %}
 
-deadkey_expr -> %deadkey ident_expr {% function(op) { return { nodeType:"deadkey", key: op[1] }; } %}
+deadkey_expr -> %deadkey ident_expr {% function(op) { op[1].role = "deadkey"; return op[1]; } %}
 
 ident_expr -> %lparen %sysstore %ident %rparen {% function(op) { return assignRole(op[2], "sysStore"); } %}
             | %lparen %ident %rparen {% function(op) { return assignRole(op[1], "store"); } %}
 
 ident_num_expr -> %lparen _ %ident _ %comma _ %number _ %rparen {% function(op) { return { store: op[2], index: op[6] }; } %}
+
+num_expr -> %lparen %number %rparen {% function(op) { return op[1]; } %}
 
 encoding -> %ANSI {% unwrap %}
           | %Unicode {% unwrap %}

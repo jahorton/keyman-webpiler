@@ -29,7 +29,7 @@
                 div.innerHTML = "";
 
                 if(parser.results.length > 1) {
-                    div.innerHTML += "<p><em><strong>Warning:  grammar is ambiguous!</strong></em></p>";
+                    div.innerHTML += "<p><em><strong>Warning:  grammar is ambiguous! " + parser.results.length + " possible parses.</strong></em></p>";
                 } else if(parser.results.length == 0) {
                     div.innerHTML += "<p><em><strong>Error occurred while parsing. " + 
                         "Please check your Developer-mode console.</strong></em></p>";
