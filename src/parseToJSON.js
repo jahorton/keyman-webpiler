@@ -396,6 +396,9 @@ class ParseProcessor {
             }
         }
 
+        if(!this.isGroup(this.processed.begin)) {
+            this.error(parseInfo.begin, "The specified group '" + this.processed.begin + "' for the begin statement does not exist!");
+        }
 
         if(this.errors.length > 0) {
             console.error(this.errors);
