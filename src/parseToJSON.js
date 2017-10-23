@@ -296,10 +296,17 @@ class ParseProcessor {
 
             if(triggerDef.modifiers) {
                 for(i=0; i < triggerDef.modifiers.length; i++) {
+                    var match = false;
                     if(this.modifierFlags[triggerDef.modifiers[i].value]) {
                         modifiers |= this.modifierFlags[triggerDef.modifiers[i].value];
+                        match = true;
                     } else if(this.stateFlags[triggerDef.modifiers[i].value]) {
                         states |= this.stateFlags[triggerDef.modifiers[i].value];
+                        match = true;
+                    }
+
+                    if(!match) {
+                        this.error(triggerDef.modifiers[i], "Unrecognized modifier or state flag specified!");
                     }
                 }
             }
