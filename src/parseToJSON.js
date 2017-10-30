@@ -229,7 +229,10 @@ class ParseProcessor {
                 if(!this.isStore(name)) {
                     this.error(elementParse, "Use of the 'any' statement requires a valid store!");
                     return;
+                } else if(this.constraintChecks.stores[name].indexOf('logic') != -1) {
+                    this.error(elementParse, "A store cannot be used for both context and logic.");
                 } else {
+                    this.constraintChecks.stores[name].push('context');
                     return { op:elementParse.role, name:name };
                 }
                 break;
@@ -239,7 +242,12 @@ class ParseProcessor {
                 if(!this.isStore(name)) {
                     this.error(elementParse.store, "Use of the 'index' statement requires a valid store!");
                     return;
+                } else if(elementParse.index.value > contextSize) {
+                    this.error(elementParse.store, "Context matching the specified index does not exist.");
+                } else if(this.constraintChecks.stores[name].indexOf('logic') != -1) {
+                    this.error(elementParse, "A store cannot be used for both context and logic.");
                 } else {
+                    this.constraintChecks.stores[name].push('context');
                     return { op:elementParse.role, name:name, index:elementParse.index.value };
                 }
                 break;
@@ -259,17 +267,24 @@ class ParseProcessor {
 
     processRuleContext(contextDef) {
         var context = [];
+        var length = 0;
         for(var i = 0; i < contextDef.length; i++) {
             var element = contextDef[i];
             if(element.type == "string") {
                 context.push(element.value); // Should probably decompose the strings to simplify later calculations!
+                length += element.value.length;
             } else {
-                var analyzed = this.processElement(element, context.length);
+                var analyzed = this.processElement(element, length);
                 context.push(analyzed); // If it's an 'outs' statement, we'll need to calc the offset here as well!
+                if(elementParse.role != "outs") {
+                    length += 1;
+                } else {
+                    length += this.processed.stores[analyzed.name].length;
+                }
             }
         }
 
-        return context;
+        return { context: context, length: length };
     }
 
     processRuleOutput(outputDef, contextLength) {
@@ -334,8 +349,9 @@ class ParseProcessor {
             case 'rule':
                 var rule = {};
                 if(ruleDef.input.context) {
-                    rule.context = this.processRuleContext(ruleDef.input.context);
-                    contextLength = rule.context.length; // TODO:  Is this the design we're going with?
+                    var result = this.processRuleContext(ruleDef.input.context);
+                    rule.context = result.context;
+                    contextLength = result.length; // TODO:  Is this the design we're going with?
                 }
                 if(ruleDef.input.trigger) {
                     rule.trigger = this.processTrigger(ruleDef.input.trigger);
@@ -374,8 +390,6 @@ class ParseProcessor {
         this.processStores(parseInfo.stores);
         this.processGroups(parseInfo.groups);
 
-        // TODO:  Verify all match rules here, as well as the begin statement's group.
-        
         for(var name in this.processed.groups) {
             var group = this.processed.groups[name];
 

@@ -78,7 +78,11 @@
                 var compiler = new ParseProcessor(result.begin);
                 var result = compiler.process(result);
 
-                json = JSON.stringify(result, null, 2);
+                if(typeof(result) == "undefined") {
+                    json = "<strong>" + JSON.stringify(compiler.errors, null, 2) + "</strong>";
+                } else {
+                    json = JSON.stringify(result, null, 2);
+                }
                 div.innerHTML += "<pre><code>" + json + "</code></pre>";
             }
         </script>
