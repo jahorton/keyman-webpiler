@@ -276,7 +276,7 @@ class ParseProcessor {
             } else {
                 var analyzed = this.processElement(element, length);
                 context.push(analyzed); // If it's an 'outs' statement, we'll need to calc the offset here as well!
-                if(elementParse.role != "outs") {
+                if(element.role != "outs") {
                     length += 1;
                 } else {
                     length += this.processed.stores[analyzed.name].length;
@@ -384,7 +384,7 @@ class ParseProcessor {
      * The main processing method.
      * @param {*} parseInfo The parse tree output by our nearley grammar's parser.
      */
-    process(parseInfo) {
+    execute(parseInfo) {
         this.processBegin(parseInfo.begin);
         this.processSystemStores(parseInfo.systemStores);
         this.processStores(parseInfo.stores);
